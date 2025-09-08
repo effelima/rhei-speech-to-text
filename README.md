@@ -1,36 +1,106 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# RHEI - Internal Productivity Tool: Speech-to-Text Feature
 
-## Getting Started
+This project is a functional MVP (Minimum Viable Product) of a Speech-to-Text application, built as part of the AI Product Builder Technical Assessment for RHEI.
 
-First, run the development server:
+The goal is to provide a simple and efficient internal tool for RHEI employees to quickly convert audio to text, addressing the need to transcribe day-to-day communications and reduce knowledge gaps.
+
+---
+
+## 🔴 Live Demo
+
+You can test the deployed application here:
+
+**soon**
+
+---
+
+## ✨ Features
+
+* **Real-time Audio Recording:** Captures audio directly from the user's microphone using the browser's native capabilities.
+* **AI-Powered Transcription:** Integrates with the Groq API, utilizing the Whisper-large-v3 model for fast and accurate speech-to-text conversion. [cite: 2]
+* **Persistent Storage:** All transcriptions are saved to a Supabase PostgreSQL database, allowing users to see a history of their recordings.
+* **Professional UI:** The user interface is clean, intuitive, and inspired by RHEI's official branding to feel like a genuine internal tool.
+
+---
+
+## 🛠️ Tech Stack
+
+* **Framework:** Next.js (App Router)
+* **Language:** TypeScript
+* **Styling:** Tailwind CSS
+* **Database:** Supabase (PostgreSQL)
+* **AI Service:** Groq API (Whisper-large-v3)
+* **Deployment:** Vercel
+
+---
+
+## 🚀 Getting Started
+
+To run this project locally, follow these steps:
+
+### 1\. Prerequisites
+
+* Node.js (v18 or later)
+* npm or yarn
+* Git
+
+### 2\. Clone the Repository
+
+```bash
+git clone [https://github.com/effelima/rhei-speech-to-text](https://github.com/effelima/rhei-speech-to-text)
+cd [rhei-speech-to-text]
+```
+
+### 3\. Install Dependencies
+
+```bash
+npm install
+```
+
+### 4\. Set Up Environment Variables
+
+Create a file named `.env.local` in the root of the project and add the following variables. You can get these keys from your Supabase and Groq project dashboards.
+
+```bash
+# Supabase Project URL
+NEXT_PUBLIC_SUPABASE_URL=YOUR_SUPABASE_URL
+
+# Supabase Public Anon Key
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+
+# Groq API Key
+GROQ_API_KEY=YOUR_GROQ_API_KEY
+```
+
+### 5\. Set Up the Database
+
+This project uses the Supabase CLI to manage database migrations.
+
+```bash
+npm install supabase --save-dev
+```
+
+Next, log in and link your local project to your remote Supabase project:
+Bash
+
+```bash
+npx supabase login
+npx supabase link --project-ref YOUR_PROJECT_ID
+```
+
+(You can find your YOUR_PROJECT_ID in your Supabase project's URL).
+
+Finally, push the migration to create the transcriptions table in your database:
+Bash
+
+```bash
+npx supabase db push
+```
+
+### 6\. Run the Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The application should now be running on http://localhost:3000.
