@@ -1,6 +1,8 @@
 // src/app/page.tsx
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Transcription } from '@/types/transcription';
 
@@ -8,6 +10,9 @@ const RecordingIcon = () => ( <svg className="w-5 h-5" fill="currentColor" viewB
 const DocumentIcon = () => ( <svg className="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> );
 
 export default function HomePage() {
+  const router = useRouter();
+  const supabase = createSupabaseBrowserClient();
+
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
@@ -15,6 +20,16 @@ export default function HomePage() {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+      }
+    };
+    checkSession();
+  }, [router, supabase]);
 
   const fetchTranscriptions = useCallback(async () => {
     if (isLoading) return;

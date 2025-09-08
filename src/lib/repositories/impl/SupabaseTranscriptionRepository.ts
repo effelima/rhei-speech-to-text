@@ -18,9 +18,12 @@ export class SupabaseTranscriptionRepository implements ITranscriptionRepository
   }
 
   async create(title: string, content: string): Promise<Transcription | null> {
+    const { data: { user } } = await this.supabase.auth.getUser();
+    if (!user) return null;
+
     const { data, error } = await this.supabase
       .from('transcriptions')
-      .insert({ title, content })
+      .insert({ title, content, user_id: user.id })
       .select()
       .single();
 
@@ -29,7 +32,7 @@ export class SupabaseTranscriptionRepository implements ITranscriptionRepository
       return null;
     }
     return data as Transcription;
-  }
+}
 
   async findAll(): Promise<Transcription[]> {
     const { data, error } = await this.supabase
