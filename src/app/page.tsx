@@ -1,103 +1,199 @@
-import Image from "next/image";
+// src/app/page.tsx
+'use client';
 
-export default function Home() {
+import { useState, useEffect, useRef } from 'react';
+import { Transcription } from '@/types/transcription';
+
+// Recording icon component with the new color palette
+const RecordingIcon = () => (
+  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="10" cy="10" r="7" />
+  </svg>
+);
+
+// Icon for the transcription cards
+const DocumentIcon = () => (
+  <svg className="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+  </svg>
+);
+
+
+export default function HomePage() {
+  // --- COMPONENT STATE ---
+  const [isRecording, setIsRecording] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // useRef to hold the MediaRecorder instance between renders
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+
+  // --- DATA LOGIC ---
+
+  // Function to fetch all transcriptions from our API
+  const fetchTranscriptions = async () => {
+    const wasLoading = isLoading;
+    if (!wasLoading) setIsLoading(true);
+    try {
+      const response = await fetch('/api/transcriptions');
+      if (!response.ok) throw new Error('Failed to fetch transcriptions.');
+      const data: Transcription[] = await response.json();
+      setTranscriptions(data);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      if (!wasLoading) setIsLoading(false);
+    }
+  };
+
+  // useEffect to fetch initial data when the component mounts
+  useEffect(() => {
+    fetchTranscriptions();
+  }, []);
+
+  // --- RECORDING LOGIC ---
+
+  // Function to start audio recording
+  const startRecording = async () => {
+    setError(null);
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+        mediaRecorderRef.current = mediaRecorder;
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          setIsLoading(true);
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+          const formData = new FormData();
+          formData.append('audio', audioBlob, 'recording.webm');
+          try {
+            const response = await fetch('/api/transcriptions', {
+              method: 'POST',
+              body: formData,
+            });
+            if (!response.ok) {
+              const errData = await response.json();
+              throw new Error(errData.error || 'Failed to transcribe the audio.');
+            }
+            const newTranscription: Transcription = await response.json();
+            // Add the new transcription to the list (without needing to re-fetch all)
+            setTranscriptions(prev => [newTranscription, ...prev]);
+          } catch (err: any) {
+            setError(err.message);
+          } finally {
+            setIsLoading(false);
+          }
+        };
+        mediaRecorder.start();
+        setIsRecording(true);
+      } catch (err) {
+        setError('Permission to use the microphone was denied.');
+      }
+    } else {
+      setError('Audio recording is not supported by this browser.');
+    }
+  };
+
+  // Function to stop the recording
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      // The 'onstop' event will handle the audio submission
+    }
+  };
+
+  // --- COMPONENT RENDER ---
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <main className="bg-[#0B0F19] text-slate-200 min-h-screen font-sans">
+      <div className="container mx-auto max-w-4xl px-4 py-12">
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        {/* Header */}
+        <header className="text-center mb-12">
+          {/* Assuming you have an SVG logo in /public */}
+          {/* <img src="/rhei-logo.svg" alt="RHEI Logo" className="h-10 mx-auto mb-4" /> */}
+          <h1 className="text-5xl font-bold text-white tracking-tight">
+            Transcription Tool
+          </h1>
+          <p className="text-xl text-slate-400 mt-2 max-w-2xl mx-auto">
+            An internal tool to boost the RHEI team's productivity.
+          </p>
+        </header>
+
+        {/* Recording Section */}
+        <section className="bg-slate-800/50 border border-slate-700 p-8 rounded-2xl shadow-xl mb-12 flex flex-col items-center backdrop-blur-sm">
+          <h2 className="text-2xl font-semibold text-white mb-4">
+            Ready to get started?
+          </h2>
+          <p className="text-slate-400 mb-6">Click the button below to start recording.</p>
+          <button
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={isLoading}
+            className={`
+              px-8 py-4 rounded-full text-lg font-bold transition-all duration-300 ease-in-out
+              flex items-center justify-center gap-3 w-64 h-16
+              transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-offset-[#0B0F19]
+              disabled:opacity-50 disabled:cursor-not-allowed
+              ${isRecording
+                ? 'bg-yellow-500 text-slate-900 hover:bg-yellow-400 focus:ring-yellow-500'
+                : 'bg-blue-600 text-white hover:bg-blue-500 focus:ring-blue-600'
+              }
+            `}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+            {isLoading ? (
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+            ) : isRecording ? (
+              <>
+                <RecordingIcon />
+                <span>Recording...</span>
+              </>
+            ) : (
+              <span>Start Recording</span>
+            )}
+          </button>
+          {error && <p className="mt-4 text-sm text-yellow-400">{error}</p>}
+        </section>
+
+        {/* Transcriptions List Section */}
+        <section>
+          <div className="space-y-4">
+            {transcriptions.map((t) => (
+              <article key={t.id} className="bg-slate-800/50 border border-slate-700 p-5 rounded-xl shadow-lg transition-all hover:border-slate-600">
+                <div className="flex items-center mb-2">
+                  <DocumentIcon />
+                  <h3 className="text-lg font-semibold text-white">{t.title}</h3>
+                </div>
+                <p className="text-slate-300 leading-relaxed ml-8">{t.content}</p>
+                <p className="text-xs text-slate-500 mt-3 text-right">
+                  {new Date(t.created_at).toLocaleString('en-US')}
+                </p>
+              </article>
+            ))}
+            
+            {isLoading && transcriptions.length === 0 && (
+              <p className="text-center text-slate-400 py-8">Loading transcriptions...</p>
+            )}
+
+            {!isLoading && transcriptions.length === 0 && (
+              <div className="text-center py-16 px-4 border-2 border-dashed border-slate-700 rounded-2xl">
+                <h3 className="text-xl font-medium text-white">No Transcriptions Yet</h3>
+                <p className="text-slate-500 mt-2">Your recordings will appear here once they're completed.</p>
+              </div>
+            )}
+          </div>
+        </section>
+
+      </div>
+    </main>
   );
 }

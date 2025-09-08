@@ -1,0 +1,15 @@
+services:
+  # O nosso único serviço: a aplicação Next.js
+  app:
+    container_name: rhei-app-local
+    # Constrói a imagem usando o Dockerfile na pasta atual
+    build: .
+    # Mapeia a porta 3000 do contentor para a porta 3000 da tua máquina
+    ports:
+      - "3000:3000"
+    # O passo mais importante:
+    # Monta a pasta atual do projeto ('.') para a pasta '/app' no contentor.
+    # Isto significa que qualquer ficheiro criado pela aplicação (como 'local.db'
+    # do SQLite) será, na verdade, criado e guardado na tua máquina.
+    volumes:
+      - .:/app
