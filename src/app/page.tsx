@@ -1,18 +1,18 @@
 // src/app/page.tsx
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Transcription } from '@/types/transcription';
+import { useRouter } from 'next/navigation';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
+// Ícones
 const RecordingIcon = () => ( <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="7" /></svg> );
 const DocumentIcon = () => ( <svg className="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> );
 
 export default function HomePage() {
   const router = useRouter();
   const supabase = createSupabaseBrowserClient();
-
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
@@ -21,19 +21,9 @@ export default function HomePage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/login');
-      }
-    };
-    checkSession();
-  }, [router, supabase]);
-
+  // A função fetchTranscriptions é "memorizada" com useCallback e um array de dependências vazio,
+  // garantindo que ela seja criada apenas uma vez e não cause loops.
   const fetchTranscriptions = useCallback(async () => {
-    if (isLoading) return;
-
     setIsLoading(true);
     try {
       const response = await fetch('/api/transcriptions');
@@ -41,19 +31,26 @@ export default function HomePage() {
       const data: Transcription[] = await response.json();
       setTranscriptions(data);
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unknown error occurred.');
-      }
+      if (err instanceof Error) setError(err.message);
+      else setError('An unknown error occurred.');
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading]);
-
-  useEffect(() => {
-    fetchTranscriptions();
   }, []);
+
+  // Este useEffect verifica se o utilizador está autenticado.
+  // Se estiver, ele chama fetchTranscriptions para carregar os dados.
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+      } else {
+        fetchTranscriptions();
+      }
+    };
+    checkSession();
+  }, [router, supabase, fetchTranscriptions]);
 
   const startRecording = async () => {
     setError(null);
@@ -65,9 +62,7 @@ export default function HomePage() {
         audioChunksRef.current = [];
 
         mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            audioChunksRef.current.push(event.data);
-          }
+          if (event.data.size > 0) audioChunksRef.current.push(event.data);
         };
 
         mediaRecorder.onstop = async () => {
@@ -87,11 +82,8 @@ export default function HomePage() {
             const newTranscription: Transcription = await response.json();
             setTranscriptions(prev => [newTranscription, ...prev]);
           } catch (err: unknown) {
-            if (err instanceof Error) {
-              setError(err.message);
-            } else {
-              setError('An unknown error occurred during transcription.');
-            }
+            if (err instanceof Error) setError(err.message);
+            else setError('An unknown error occurred during transcription.');
           } finally {
             setIsLoading(false);
           }
@@ -117,40 +109,14 @@ export default function HomePage() {
     <main className="bg-[#0B0F19] text-slate-200 min-h-screen font-sans">
       <div className="container mx-auto max-w-4xl px-4 py-12">
         <header className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white tracking-tight">
-            Transcription Tool
-          </h1>
-          <p className="text-xl text-slate-400 mt-2 max-w-2xl mx-auto">
-            An internal tool to boost the RHEI team&apos;s productivity.
-          </p>
+          <h1 className="text-5xl font-bold text-white tracking-tight">Transcription Tool</h1>
+          <p className="text-xl text-slate-400 mt-2 max-w-2xl mx-auto">An internal tool to boost the RHEI team&apos;s productivity.</p>
         </header>
         <section className="bg-slate-800/50 border border-slate-700 p-8 rounded-2xl shadow-xl mb-12 flex flex-col items-center backdrop-blur-sm">
           <h2 className="text-2xl font-semibold text-white mb-4">Ready to get started?</h2>
           <p className="text-slate-400 mb-6">Click the button below to start recording.</p>
-          <button
-            onClick={isRecording ? stopRecording : startRecording}
-            disabled={isLoading}
-            className={`
-              px-8 py-4 rounded-full text-lg font-bold transition-all duration-300 ease-in-out
-              flex items-center justify-center gap-3 w-64 h-16
-              transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-offset-[#0B0F19]
-              disabled:opacity-50 disabled:cursor-not-allowed
-              ${isRecording
-                ? 'bg-yellow-500 text-slate-900 hover:bg-yellow-400 focus:ring-yellow-500'
-                : 'bg-blue-600 text-white hover:bg-blue-500 focus:ring-blue-600'
-              }
-            `}
-          >
-            {isLoading ? (
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
-            ) : isRecording ? (
-              <>
-                <RecordingIcon />
-                <span>Recording...</span>
-              </>
-            ) : (
-              <span>Start Recording</span>
-            )}
+          <button onClick={isRecording ? stopRecording : startRecording} disabled={isLoading} className={`px-8 py-4 rounded-full text-lg font-bold transition-all duration-300 ease-in-out flex items-center justify-center gap-3 w-64 h-16 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-offset-[#0B0F19] disabled:opacity-50 disabled:cursor-not-allowed ${isRecording ? 'bg-yellow-500 text-slate-900 hover:bg-yellow-400 focus:ring-yellow-500' : 'bg-blue-600 text-white hover:bg-blue-500 focus:ring-blue-600'}`}>
+            {isLoading ? (<div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>) : isRecording ? (<> <RecordingIcon /> <span>Recording...</span> </>) : (<span>Start Recording</span>)}
           </button>
           {error && <p className="mt-4 text-sm text-yellow-400">{error}</p>}
         </section>
@@ -163,20 +129,14 @@ export default function HomePage() {
                   <h3 className="text-lg font-semibold text-white">{t.title}</h3>
                 </div>
                 <p className="text-slate-300 leading-relaxed ml-8">{t.content}</p>
-                <p className="text-xs text-slate-500 mt-3 text-right">
-                  {new Date(t.created_at).toLocaleString('en-US')}
-                </p>
+                <p className="text-xs text-slate-500 mt-3 text-right">{new Date(t.created_at).toLocaleString('en-US')}</p>
               </article>
             ))}
-            {isLoading && transcriptions.length === 0 && (
-              <p className="text-center text-slate-400 py-8">Loading transcriptions...</p>
-            )}
+            {isLoading && transcriptions.length === 0 && (<p className="text-center text-slate-400 py-8">Loading transcriptions...</p>)}
             {!isLoading && transcriptions.length === 0 && (
               <div className="text-center py-16 px-4 border-2 border-dashed border-slate-700 rounded-2xl">
                 <h3 className="text-xl font-medium text-white">No Transcriptions Yet</h3>
-                <p className="text-slate-500 mt-2">
-                  Your recordings will appear here once they&apos;re completed.
-                </p>
+                <p className="text-slate-500 mt-2">Your recordings will appear here once they&apos;re completed.</p>
               </div>
             )}
           </div>
