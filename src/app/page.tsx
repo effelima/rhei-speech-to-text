@@ -1,39 +1,31 @@
 // src/app/page.tsx
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Transcription } from '@/types/transcription';
 
-// Recording icon component with the new color palette
 const RecordingIcon = () => (
   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
     <circle cx="10" cy="10" r="7" />
   </svg>
 );
 
-// Icon for the transcription cards
 const DocumentIcon = () => (
   <svg className="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
   </svg>
 );
 
-
 export default function HomePage() {
-  // --- COMPONENT STATE ---
   const [isRecording, setIsRecording] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [transcriptions, setTranscriptions] = useState<Transcription[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // useRef to hold the MediaRecorder instance between renders
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  // --- DATA LOGIC ---
-
-  // Function to fetch all transcriptions from our API
-  const fetchTranscriptions = async () => {
+  const fetchTranscriptions = useCallback(async () => {
     const wasLoading = isLoading;
     if (!wasLoading) setIsLoading(true);
     try {
@@ -41,21 +33,21 @@ export default function HomePage() {
       if (!response.ok) throw new Error('Failed to fetch transcriptions.');
       const data: Transcription[] = await response.json();
       setTranscriptions(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred.');
+      }
     } finally {
       if (!wasLoading) setIsLoading(false);
     }
-  };
+  }, [isLoading]);
 
-  // useEffect to fetch initial data when the component mounts
   useEffect(() => {
     fetchTranscriptions();
-  }, []);
+  }, [fetchTranscriptions]);
 
-  // --- RECORDING LOGIC ---
-
-  // Function to start audio recording
   const startRecording = async () => {
     setError(null);
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -86,10 +78,13 @@ export default function HomePage() {
               throw new Error(errData.error || 'Failed to transcribe the audio.');
             }
             const newTranscription: Transcription = await response.json();
-            // Add the new transcription to the list (without needing to re-fetch all)
             setTranscriptions(prev => [newTranscription, ...prev]);
-          } catch (err: any) {
-            setError(err.message);
+          } catch (err: unknown) {
+            if (err instanceof Error) {
+              setError(err.message);
+            } else {
+              setError('An unknown error occurred during transcription.');
+            }
           } finally {
             setIsLoading(false);
           }
@@ -104,37 +99,26 @@ export default function HomePage() {
     }
   };
 
-  // Function to stop the recording
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      // The 'onstop' event will handle the audio submission
     }
   };
 
-  // --- COMPONENT RENDER ---
   return (
     <main className="bg-[#0B0F19] text-slate-200 min-h-screen font-sans">
       <div className="container mx-auto max-w-4xl px-4 py-12">
-
-        {/* Header */}
         <header className="text-center mb-12">
-          {/* Assuming you have an SVG logo in /public */}
-          {/* <img src="/rhei-logo.svg" alt="RHEI Logo" className="h-10 mx-auto mb-4" /> */}
           <h1 className="text-5xl font-bold text-white tracking-tight">
             Transcription Tool
           </h1>
           <p className="text-xl text-slate-400 mt-2 max-w-2xl mx-auto">
-            An internal tool to boost the RHEI team's productivity.
+            An internal tool to boost the RHEI team&apos;s productivity.
           </p>
         </header>
-
-        {/* Recording Section */}
         <section className="bg-slate-800/50 border border-slate-700 p-8 rounded-2xl shadow-xl mb-12 flex flex-col items-center backdrop-blur-sm">
-          <h2 className="text-2xl font-semibold text-white mb-4">
-            Ready to get started?
-          </h2>
+          <h2 className="text-2xl font-semibold text-white mb-4">Ready to get started?</h2>
           <p className="text-slate-400 mb-6">Click the button below to start recording.</p>
           <button
             onClick={isRecording ? stopRecording : startRecording}
@@ -163,8 +147,6 @@ export default function HomePage() {
           </button>
           {error && <p className="mt-4 text-sm text-yellow-400">{error}</p>}
         </section>
-
-        {/* Transcriptions List Section */}
         <section>
           <div className="space-y-4">
             {transcriptions.map((t) => (
@@ -179,20 +161,19 @@ export default function HomePage() {
                 </p>
               </article>
             ))}
-            
             {isLoading && transcriptions.length === 0 && (
               <p className="text-center text-slate-400 py-8">Loading transcriptions...</p>
             )}
-
             {!isLoading && transcriptions.length === 0 && (
               <div className="text-center py-16 px-4 border-2 border-dashed border-slate-700 rounded-2xl">
                 <h3 className="text-xl font-medium text-white">No Transcriptions Yet</h3>
-                <p className="text-slate-500 mt-2">Your recordings will appear here once they're completed.</p>
+                <p className="text-slate-500 mt-2">
+                  Your recordings will appear here once they&apos;re completed.
+                </p>
               </div>
             )}
           </div>
         </section>
-
       </div>
     </main>
   );

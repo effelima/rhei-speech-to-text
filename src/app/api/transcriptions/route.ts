@@ -3,14 +3,10 @@ import { SupabaseTranscriptionRepository } from "@/lib/repositories/impl/Supabas
 import { NextResponse } from "next/server";
 import Groq from "groq-sdk";
 
-// NÃO instanciamos o repositório aqui fora
-
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Handler para obter todas as transcrições
 export async function GET() {
   try {
-    // Instanciamos o repositório AQUI, dentro da função GET
     const transcriptionRepository = new SupabaseTranscriptionRepository();
     const transcriptions = await transcriptionRepository.findAll();
     return NextResponse.json(transcriptions);
@@ -19,12 +15,9 @@ export async function GET() {
   }
 }
 
-// Handler para criar uma nova transcrição a partir de um áudio
 export async function POST(request: Request) {
   try {
-    // Instanciamos o repositório AQUI, dentro da função POST
     const transcriptionRepository = new SupabaseTranscriptionRepository();
-    
     const formData = await request.formData();
     const audioFile = formData.get('audio') as File | null;
 
@@ -36,7 +29,7 @@ export async function POST(request: Request) {
       file: audioFile,
       model: "whisper-large-v3",
       response_format: "json",
-      language: "en", // Changed to English as per your request
+      language: "en",
     });
 
     const content = transcription.text;
@@ -45,7 +38,6 @@ export async function POST(request: Request) {
     }
 
     const title = content.split(' ').slice(0, 5).join(' ') + '...';
-
     const newTranscription = await transcriptionRepository.create(title, content);
 
     if (!newTranscription) {
@@ -54,8 +46,12 @@ export async function POST(request: Request) {
 
     return NextResponse.json(newTranscription, { status: 201 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("API Error:", error);
-    return NextResponse.json({ error: error.message || "Failed to create transcription." }, { status: 500 });
+    let errorMessage = "Failed to create transcription.";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
