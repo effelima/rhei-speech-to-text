@@ -4,17 +4,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Transcription } from '@/types/transcription';
 
-const RecordingIcon = () => (
-  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="10" cy="10" r="7" />
-  </svg>
-);
-
-const DocumentIcon = () => (
-  <svg className="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-  </svg>
-);
+const RecordingIcon = () => ( <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="7" /></svg> );
+const DocumentIcon = () => ( <svg className="w-5 h-5 mr-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg> );
 
 export default function HomePage() {
   const [isRecording, setIsRecording] = useState(false);
@@ -26,8 +17,9 @@ export default function HomePage() {
   const audioChunksRef = useRef<Blob[]>([]);
 
   const fetchTranscriptions = useCallback(async () => {
-    const wasLoading = isLoading;
-    if (!wasLoading) setIsLoading(true);
+    if (isLoading) return;
+
+    setIsLoading(true);
     try {
       const response = await fetch('/api/transcriptions');
       if (!response.ok) throw new Error('Failed to fetch transcriptions.');
@@ -40,13 +32,13 @@ export default function HomePage() {
         setError('An unknown error occurred.');
       }
     } finally {
-      if (!wasLoading) setIsLoading(false);
+      setIsLoading(false);
     }
   }, [isLoading]);
 
   useEffect(() => {
     fetchTranscriptions();
-  }, [fetchTranscriptions]);
+  }, []);
 
   const startRecording = async () => {
     setError(null);
@@ -91,7 +83,7 @@ export default function HomePage() {
         };
         mediaRecorder.start();
         setIsRecording(true);
-      } catch (err) {
+      } catch {
         setError('Permission to use the microphone was denied.');
       }
     } else {
