@@ -7,17 +7,18 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function GET() {
   try {
-    const transcriptionRepository = new SupabaseTranscriptionRepository();
+    const transcriptionRepository = await SupabaseTranscriptionRepository.create();
     const transcriptions = await transcriptionRepository.findAll();
     return NextResponse.json(transcriptions);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: "Failed to fetch transcriptions" }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const transcriptionRepository = new SupabaseTranscriptionRepository();
+    const transcriptionRepository = await SupabaseTranscriptionRepository.create();
+    
     const formData = await request.formData();
     const audioFile = formData.get('audio') as File | null;
 

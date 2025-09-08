@@ -1,14 +1,20 @@
-// lib/repositories/impl/SupabaseTranscriptionRepository.ts
+// src/lib/repositories/impl/SupabaseTranscriptionRepository.ts
 import { ITranscriptionRepository } from "../ITranscriptionRepository";
 import { Transcription } from "@/types/transcription";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 export class SupabaseTranscriptionRepository implements ITranscriptionRepository {
-  private supabase;
+  private supabase: SupabaseClient;
 
-  constructor() {
-    // Inicializamos o cliente Supabase aqui
-    this.supabase = createSupabaseServerClient();
+
+  private constructor(supabaseClient: SupabaseClient) {
+    this.supabase = supabaseClient;
+  }
+
+  public static async create(): Promise<SupabaseTranscriptionRepository> {
+    const supabaseClient = await createSupabaseServerClient();
+    return new SupabaseTranscriptionRepository(supabaseClient);
   }
 
   async create(title: string, content: string): Promise<Transcription | null> {
@@ -16,7 +22,7 @@ export class SupabaseTranscriptionRepository implements ITranscriptionRepository
       .from('transcriptions')
       .insert({ title, content })
       .select()
-      .single(); // .single() retorna um objeto em vez de um array
+      .single();
 
     if (error) {
       console.error("Error creating transcription:", error);
@@ -33,7 +39,7 @@ export class SupabaseTranscriptionRepository implements ITranscriptionRepository
 
     if (error) {
       console.error("Error fetching transcriptions:", error);
-      return []; // Retorna um array vazio em caso de erro
+      return [];
     }
     return data as Transcription[];
   }
